@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>审核员工作台 · 工单审核记录（main.py 流程）</title>
+<style>
+  :root {
+    --bg: #f4f6f9;
+    --card: #fff;
+    --border: #d8dee4;
+    --text: #1c2333;
+    --muted: #5a6578;
+    --ok: #0d7a5f;
+    --warn: #b45309;
+    --info: #1a56db;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", "PingFang SC", system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+  .shell { max-width: 1000px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+  h1 { font-size: 1.35rem; font-weight: 600; margin: 0 0 0.35rem; }
+  .meta { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.25rem; }
+  .grid { display: grid; gap: 1rem; }
+  @media (min-width: 720px) { .row2 { grid-template-columns: 1fr 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem 1.2rem; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+  .card h2 { font-size: 0.95rem; text-transform: none; color: var(--info); margin: 0 0 0.75rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem; }
+  .card h2 span.badge { font-size: 0.7rem; background: #e7f0ff; color: var(--info); padding: 0.1rem 0.45rem; border-radius: 4px; font-weight: 600; }
+  pre, .mono { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-size: 0.82rem; white-space: pre-wrap; word-break: break-word; background: #f0f3f7; border-radius: 6px; padding: 0.75rem; margin: 0; color: #24292f; }
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--muted); }
+  .flow b { color: var(--text); font-weight: 500; }
+  .arrow { color: var(--border); }
+  .tools { display: grid; gap: 0.65rem; }
+  @media (min-width: 640px) { .tools { grid-template-columns: repeat(3, 1fr); } }
+  .tool h3 { margin: 0 0 0.35rem; font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+  .verdict { border-left: 4px solid var(--warn); padding-left: 0.9rem; }
+  .verdict .tag { display: inline-block; background: #fff7e6; color: var(--warn); font-size: 0.75rem; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 4px; margin-bottom: 0.5rem; }
+  .reviewer h2 { color: #5c3c9a; }
+  .reviewer .stance { color: var(--ok); font-weight: 600; margin-top: 0.5rem; }
+  footer { font-size: 0.8rem; color: var(--muted); margin-top: 1.5rem; text-align: center; }
+  .legend { font-size: 0.8rem; color: var(--muted); margin-top: 0.75rem; }
+  strong { font-weight: 600; }
+</style>
+</head>
+<body>
+  <div class="shell">
+    <h1>提币 / KYC 审核工作单</h1>
+    <p class="meta">角色视角：<strong>一线审核员</strong> &nbsp;·&nbsp; 本记录依据项目内 <code>python main.py</code> 同一套逻辑：工具链（<code>audit_agent/tools.py</code>）→ 大模型多轮 + 独立反思（<code>agent.py</code>）→ SQLite 会话（<code>data/memory.db</code>，会话 <code>141ad11d290f</code>）</p>
+
+    <div class="grid" style="margin-bottom:1rem">
+      <div class="card">
+        <h2>与 main.py 的对应关系</h2>
+        <div class="flow">
+          <b>1</b> 终端/入口 <code>main.py</code>
+          <span class="arrow">→</span>
+          <b>2</b> 加载 <code>AuditAgent</code> 与 <code>TOOL_SPECS</code>
+          <span class="arrow">→</span>
+          <b>3</b> <code>run_turn</code>：先写长期记忆，再 <code>chat + tools</code>，最后 <code>_reflect</code> 反思修订
+        </div>
+        <p class="legend">下方「系统工具结果」为与 <code>tools.py</code> 中实现一致的字段解析与规则摘要；「Agent+反思」为同一会话在真实 <code>main</code> 中跑出的输出留存。</p>
+      </div>
+    </div>
+
+    <div class="grid row2" style="margin-bottom:1rem">
+      <div class="card">
+        <h2>原始工单 <span class="badge">待审</span></h2>
+        <pre class="mono">用户备注：kyc2提币审
+提币金额：100
+充值金额：200</pre>
+      </div>
+      <div class="card">
+        <h2>流程总览 <span class="badge">可见化</span></h2>
+        <div class="pre mono" style="line-height:1.8">规则检索 (lookup_policy_rule)
+UTC 时间戳   (get_audit_utc_time)
+字段校验   (validate_case_snapshot)
+  ↓
+大模型 + 自动工具循环（与 main 相同）
+  ↓
+第二路 LLM 反思《质检/修订》</div>
+        <p class="legend" style="margin:0.6rem 0 0">与 <code>main.py</code> 的交互一致：在终端中输入上框工单文本即等同一次 <code>run_turn</code>。</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:1rem">
+      <h2>系统工具层（对应当次工单，与 <code>dispatch_tool</code> 结果一致）</h2>
+      <div class="tools">
+        <div class="card tool" style="box-shadow:none; margin:0">
+          <h3>lookup_policy_rule(「kyc2提币」)</h3>
+          <pre class="mono">若用户备注含「kyc2提币审」或「kyc2提现审」：需确认 KYC2 已完成；若提币金额大于充值金额则倾向拒绝；若提币金额不大于充值金额则倾向通过。</pre>
+        </div>
+        <div class="card tool" style="box-shadow:none; margin:0">
+          <h3>get_audit_utc_time</h3>
+          <pre class="mono">本次 Agent 行内时间戳：2026-04-22T16:55:36.284931+00:00</pre>
+        </div>
+        <div class="card tool" style="box-shadow:none; margin:0">
+          <h3>validate_case_snapshot</h3>
+          <pre class="mono">{&quot;parsed_fields&quot;: {&quot;用户备注&quot;: &quot;kyc2提币审&quot;, &quot;提币金额&quot;: &quot;100&quot;, &quot;充值金额&quot;: &quot;200&quot;}, &quot;missing_required&quot;: [], &quot;ready_for_branch&quot;: true}</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>系统输出 · Agent 最终答复 + 反思（真实运行 <code>main</code> 同路径）</h2>
+        <div class="verdict">
+          <div class="tag">模型结论结构：质检 / 修订</div>
+          <div class="pre mono" style="background:#fff; border:1px solid var(--border)">【质检结果】需修订<br/>
+【问题清单】遗漏待补充字段：1. 规则是否仅包含“提币金额不大于充值金额”这一个判断条件，未明确说明是否存在其他规则要点需核对；2. 用户备注“kyc2提币审”是否需要补充kyc2相关的其他信息（如kyc2的具体提币限制、用户身份验证状态等）。<br/>
+【修订稿】<br/>
+<strong>审核建议</strong>：待补充信息后再判断<br/>
+<strong>依据</strong>：规则显示kyc2提币场景下，提币金额不大于充值金额（100 ≤ 200）是一个判断条件，但不确定是否存在其他规则要点需核对，同时用户备注“kyc2提币审”是否需要补充kyc2相关的其他信息（如kyc2的具体提币限制、用户身份验证状态等）。<br/>
+<strong>待补充字段</strong>：1. 规则是否仅包含“提币金额不大于充值金额”这一个判断条件；2. kyc2的具体提币限制；3. 用户身份验证状态。<br/>
+<strong>时间</strong>：2026-04-22T16:55:36.284931+00:00<br/>
+<br/>
+---<br/>
+（已附反思修订；上方为完整质检输出）</div>
+        </div>
+      </div>
+      <div class="card reviewer">
+        <h2>普通审核员处置意见</h2>
+        <p>本人已按工单字段核对：<strong>三要素齐全</strong>（<code>validate</code> 的 <code>ready_for_branch</code> 为 true），规则命中 kyc2 提币条：提币 100 ≤ 充值 200，与「仅按金额与备注」分支<strong>不冲突</strong>。系统要求补充的 KYC2 系统侧状态/限额/身份校验等，在<strong>真实业务中必须向核心系统对账</strong>后才能落「通过/拒绝」.</p>
+        <p class="stance">本岗建议：<strong>暂缓最终盖章</strong>，照 Agent 列出的待补充项向风控/KYC 系统取数后，再依据正式制度二次判定。演示规则库为内置示例，<strong>以内控正式文档与生产数据为准</strong>。</p>
+        <p style="color:var(--muted); font-size:0.88rem; margin:0.5rem 0 0">本页为审阅辅助可视化，不构成正式批复。</p>
+      </div>
+    </div>
+
+    <footer>audit_agent · 由 main.py 工作流 + 实跑 Agent 输出整理 · 本地打开即可查看</footer>
+  </div>
+</body>
+</html>

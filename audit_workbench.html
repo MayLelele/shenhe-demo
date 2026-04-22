@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>提币 / KYC 审核台</title>
+  <style>
+    :root {
+      --bg: #0c1117;
+      --card: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --pass: #238636;
+      --fail: #da3633;
+      --warn: #d29922;
+      --info: #58a6ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Segoe UI", "PingFang SC", system-ui, sans-serif;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+      min-height: 100vh;
+    }
+    .layout { max-width: 920px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+    h1 { font-size: 1.35rem; font-weight: 600; margin: 0 0 0.35rem; }
+    .lead { color: var(--muted); font-size: 0.9rem; margin: 0 0 1.5rem; }
+    .grid2 {
+      display: grid;
+      gap: 0.75rem 1rem;
+    }
+    @media (min-width: 640px) {
+      .grid2 { grid-template-columns: 1fr 1fr; }
+    }
+    label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 0.25rem; }
+    input[type="text"], input:not([type]) {
+      width: 100%;
+      padding: 0.55rem 0.65rem;
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+    input:focus {
+      outline: 1px solid var(--info);
+      border-color: var(--info);
+    }
+    .row-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1.25rem;
+      align-items: center;
+      margin: 0.5rem 0 0;
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+    .row-options label { display: inline; margin: 0; }
+    .row-options input { width: auto; margin-right: 0.3rem; vertical-align: middle; }
+    .btn {
+      display: inline-block;
+      background: #238636;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 0.55rem 1.15rem;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      margin-top: 0.5rem;
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-sec { background: #21262d; color: var(--text); border: 1px solid var(--border); }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.1rem;
+      margin-top: 1.25rem;
+    }
+    .card h2 {
+      font-size: 0.9rem;
+      color: var(--info);
+      margin: 0 0 0.8rem;
+      font-weight: 600;
+    }
+    .verdict {
+      font-size: 1.1rem;
+      font-weight: 600;
+      padding: 0.6rem 0.85rem;
+      border-radius: 6px;
+      margin-bottom: 0.75rem;
+    }
+    .verdict.v-pass { background: #0d1f0f; color: #7ee787; border: 1px solid var(--pass); }
+    .verdict.v-fail { background: #1f0d0d; color: #f87171; border: 1px solid var(--fail); }
+    .verdict.v-warn { background: #1a1508; color: #f0c14a; border: 1px solid var(--warn); }
+    .verdict.v-unk { background: #0d1117; color: var(--muted); border: 1px solid var(--border); }
+    .meta-line { font-size: 0.8rem; color: var(--muted); margin: 0 0 0.5rem; }
+    .pre {
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      font-size: 0.8rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.75rem;
+      max-height: 50vh;
+      overflow: auto;
+    }
+    .err { color: #f87171; font-size: 0.9rem; }
+    .timeline { position: relative; padding-left: 0.5rem; }
+    .step { margin: 0 0 0.9rem; padding-left: 1.1rem; border-left: 2px solid var(--border); }
+    .step:last-child { border-left-color: transparent; }
+    .step-badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      padding: 0.12rem 0.45rem;
+      border-radius: 4px;
+      margin-bottom: 0.3rem;
+    }
+    .step-badge.user { background: #1f2430; color: #8b949e; }
+    .step-badge.tool { background: #0c2d3d; color: #79c0ff; }
+    .step-badge.asst { background: #1f1033; color: #d2a8ff; }
+    .step-title { font-size: 0.8rem; color: var(--muted); margin: 0 0 0.2rem; }
+    .json-tag { color: #7ee787; font-size: 0.75rem; }
+    a { color: var(--info); }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <h1>提币 / KYC 审核台</h1>
+    <p class="lead">
+      填写下方字段，调用与 <code>main.py</code> 相同的 <code>AuditAgent</code>（工具 + 记忆 + 反思），查看<strong>系统结论与证据链</strong>。需先在本机运行
+      <code>python audit_web.py</code>，再打开本页（同源访问接口）。
+    </p>
+
+    <form id="f" class="card" style="margin-top:0">
+      <h2>工单</h2>
+      <div class="grid2">
+        <div>
+          <label for="user_id">用户 ID</label>
+          <input type="text" id="user_id" name="user_id" placeholder="如 U123" autocomplete="off" />
+        </div>
+        <div>
+          <label for="remark">用户备注 *</label>
+          <input type="text" id="remark" name="remark" placeholder="如 kyc2提币审" required />
+        </div>
+        <div>
+          <label for="withdraw">提币金额 *</label>
+          <input type="text" id="withdraw" name="withdraw" placeholder="如 100" required />
+        </div>
+        <div>
+          <label for="deposit">充值金额 *</label>
+          <input type="text" id="deposit" name="deposit" placeholder="如 200" required />
+        </div>
+        <div style="grid-column:1/-1">
+          <label for="model">模型（可选，留空用环境变量 OPENAI_MODEL）</label>
+          <input type="text" id="model" name="model" placeholder="gpt-4o-mini" autocomplete="off" />
+        </div>
+      </div>
+      <div class="row-options">
+        <label><input type="checkbox" id="mock" /> 仅用 Mock（不调用大模型，无需 API Key）</label>
+      </div>
+      <div>
+        <button type="submit" class="btn" id="btn">开始审核</button>
+      </div>
+    </form>
+
+    <div id="out" class="card" style="display:none">
+      <h2>审核结果</h2>
+      <p class="meta-line" id="metaLine"></p>
+      <div id="verdictBox" class="verdict"></div>
+      <h2 style="margin:1rem 0 0.4rem; font-size:0.9rem; color:var(--muted)">系统结论摘要</h2>
+      <div id="verdictText" class="pre"></div>
+    </div>
+
+    <div id="ev" class="card" style="display:none">
+      <h2>证据链</h2>
+      <p class="meta-line" style="margin:0 0 0.75rem">按时间：用户输入 → 工具（规则 / 时间 / 字段校验）→ 助手/反思 输出</p>
+      <div class="json-tag" id="valHint" style="display:none"></div>
+      <div class="timeline" id="chain"></div>
+    </div>
+
+    <p id="err" class="err" style="display:none"></p>
+  </div>
+  <script>
+    const $ = (s) => document.querySelector(s);
+
+    function verClass(v) {
+      v = v || "";
+      if (v === "倾向通过") return "v-pass";
+      if (v === "倾向拒绝") return "v-fail";
+      if (v.includes("信息不足") || v.includes("需") || v.includes("核对")) return "v-warn";
+      return "v-unk";
+    }
+
+    function escapeHtml2(s) {
+      if (s == null) return "";
+      return String(s)
+        .split("&").join("&amp;")
+        .split("<").join("&lt;")
+        .split(">").join("&gt;")
+        .split('"').join("&quot;");
+    }
+
+    function renderEvidence2(data) {
+      const evidence = data.evidence;
+      const chain = $("#chain");
+      chain.innerHTML = "";
+      (evidence || []).forEach((e, i) => {
+        const s = document.createElement("div");
+        s.className = "step";
+        if (e.type === "user") {
+          s.innerHTML = "<div class=\"step-badge user\">第 " + (i + 1) + " 步 · 输入</div><div class=\"pre\">" + escapeHtml2(e.text) + "</div>";
+        } else if (e.type === "tool") {
+          s.innerHTML = "<div class=\"step-badge tool\">第 " + (i + 1) + " 步 · 工具</div><div class=\"step-title\"><strong>" + escapeHtml2(e.name) + "</strong></div><div class=\"pre\">" + escapeHtml2(e.output) + "</div>";
+        } else if (e.type === "assistant") {
+          s.innerHTML = "<div class=\"step-badge asst\">第 " + (i + 1) + " 步 · 助手/反思 输出</div><div class=\"pre\">" + escapeHtml2(e.text) + "</div>";
+        }
+        chain.appendChild(s);
+      });
+      const vh = $("#valHint");
+      if (data.validate_json) {
+        vh.style.display = "block";
+        const p = data.validate_json.parsed_fields;
+        const ok = data.validate_json.ready_for_branch;
+        vh.textContent = "字段解析：ready_for_branch = " + String(ok) + (p && p["用户ID"] != null && p["用户ID"] !== "" ? "，已含用户ID。" : "。");
+      } else {
+        vh.style.display = "none";
+      }
+    }
+
+    document.getElementById("f").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const err = $("#err");
+      const out = $("#out");
+      const ev = $("#ev");
+      err.style.display = "none";
+      out.style.display = "none";
+      ev.style.display = "none";
+      const btn = $("#btn");
+      btn.disabled = true;
+      const body = {
+        user_id: $("#user_id").value,
+        remark: $("#remark").value,
+        withdraw: $("#withdraw").value,
+        deposit: $("#deposit").value,
+        model: $("#model").value || undefined,
+        mock: $("#mock").checked
+      };
+      try {
+        const r = await fetch("/api/audit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json; charset=utf-8" },
+          body: JSON.stringify(body)
+        });
+        const data = await r.json();
+        if (!data.ok) {
+          err.textContent = data.error + (data.hint ? " — " + data.hint : data.detail || "");
+          err.style.display = "block";
+          return;
+        }
+        out.style.display = "block";
+        const vb = $("#verdictBox");
+        const v = data.verdict || "（无）";
+        vb.textContent = "判定：「" + v + "」";
+        vb.className = "verdict " + verClass(v);
+        $("#metaLine").textContent = "session_id: " + data.session_id
+          + "  ·  model: " + (data.model || "—")
+          + (data.mock ? "  ·  Mock" : "");
+        $("#verdictText").textContent = data.reply;
+        ev.style.display = "block";
+        renderEvidence2(data);
+      } catch (ex) {
+        err.textContent = "请求失败。是否已执行 python audit_web.py 并访问 http://127.0.0.1:8765/ ？  " + ex;
+        err.style.display = "block";
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

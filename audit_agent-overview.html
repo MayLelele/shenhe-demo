@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>audit_agent 项目总览</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --panel: #1a2332;
+    --text: #e6edf3;
+    --muted: #8b9cb3;
+    --accent: #58a6ff;
+    --border: #30363d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, "PingFang SC", "Hiragino Sans GB", sans-serif;
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+  header {
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+  }
+  h1 { font-size: 1.75rem; font-weight: 600; margin: 0 0 0.5rem; }
+  .sub { color: var(--muted); font-size: 0.95rem; }
+  nav.toc {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: rgba(15, 20, 25, 0.92);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    font-size: 0.85rem;
+  }
+  nav.toc a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  nav.toc a:hover { text-decoration: underline; }
+  .doc {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .doc h1 { font-size: 1.4rem; margin-top: 0; }
+  .doc h2 { font-size: 1.1rem; margin: 1.25rem 0 0.5rem; color: #c9d1d9; }
+  .doc p { margin: 0.5rem 0; color: #c9d1d9; }
+  .doc ul { margin: 0.4rem 0; padding-left: 1.25rem; }
+  .doc pre {
+    background: #0d1117;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    overflow: auto;
+    font-size: 0.8rem;
+  }
+  .doc pre code { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; }
+  section h2 { font-size: 1.05rem; color: #8b949e; font-weight: 500; margin: 0 0 0.75rem; }
+  pre.code {
+    margin: 0;
+    padding: 1rem;
+    background: #0d1117;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: auto;
+    max-height: 70vh;
+  }
+  pre.code code {
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: #e6edf3;
+    white-space: pre;
+  }
+  .tree { font-family: ui-monospace, Menlo, monospace; font-size: 0.85rem; color: var(--muted); background: #0d1117; border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1.5rem; white-space: pre; }
+  footer { margin-top: 2rem; color: var(--muted); font-size: 0.8rem; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>audit_agent 项目</h1>
+      <p class="sub">交互式审核辅助 Agent：工具调用、SQLite 长期记忆、反思修订。本页为源码与说明的静态总览，可直接在浏览器中打开。</p>
+    </header>
+    <div class="tree">audit_agent/
+├── main.py
+├── requirements.txt
+├── README.md
+├── .env.example
+└── audit_agent/
+    ├── __init__.py
+    ├── agent.py
+    ├── memory.py
+    └── tools.py</div>
+    <nav class="toc" aria-label="本页目录">
+<a href="#readme">说明（README）</a>
+<a href="#main-py">main.py</a>
+<a href="#requirements-txt">requirements.txt</a>
+<a href="#-env-example">.env.example</a>
+<a href="#audit_agent-__init__-py">audit_agent/__init__.py</a>
+<a href="#audit_agent-agent-py">audit_agent/agent.py</a>
+<a href="#audit_agent-tools-py">audit_agent/tools.py</a>
+<a href="#audit_agent-memory-py">audit_agent/memory.py</a>
+    </nav>
+    <div class="doc" id="readme">
+      <h1 style="margin:0 0 1rem; font-size:1.2rem; color:var(--accent)">说明</h1>
+
+<h1>审核辅助 Agent（可运行）</h1>
+<p>面向「提币 / KYC」类审核场景的最小可运行示例，包含：</p>
+<ul>
+<li><strong>工具调用</strong>：规则检索、UTC 时间、工单字段校验（内置模拟规则库）</li>
+<li><strong>记忆</strong>：会话内短期上下文 + SQLite 长期记忆（<code>data/memory.db</code>）</li>
+<li><strong>反思</strong>：对初稿做质检并输出修订说明（真实模式调用独立一轮 LLM）</li>
+</ul>
+<h2>环境</h2>
+<ul>
+<li>Python 3.9+</li>
+<li>真实模式需要 <code>OPENAI_API_KEY</code>（或兼容 OpenAI 协议的网关与密钥）</li>
+</ul>
+<h2>安装</h2>
+<pre><code>cd audit_agent
+python3 -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env        # 编辑填入 OPENAI_API_KEY
+</code></pre>
+<h2>运行</h2>
+<p><strong>离线演示（无需 API Key）：</strong></p>
+<pre><code>python main.py --mock
+</code></pre>
+<p><strong>真实模型（需配置 <code>.env</code>）：</strong></p>
+<pre><code>python main.py
+</code></pre>
+<p>可选环境变量：<code>OPENAI_MODEL</code>、<code>OPENAI_BASE_URL</code>。</p>
+<h2>项目结构</h2>
+<ul>
+<li><code>audit_agent/tools.py</code>：工具实现与 OpenAI <code>tools</code> 定义</li>
+<li><code>audit_agent/memory.py</code>：SQLite 长期记忆</li>
+<li><code>audit_agent/agent.py</code>：工具循环 + 反思逻辑</li>
+<li><code>main.py</code>：命令行交互入口</li>
+</ul>
+<h2>说明</h2>
+<p>内置规则片段为演示用途，与完整内控制度一致前请以正式文档与系统为准。</p>
+
+    </div>
+<section id="main-py"><h2><code>main.py</code></h2><pre class="code"><code>#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+&quot;&quot;&quot;交互式入口：python main.py [--mock]&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import argparse
+import os
+import sys
+
+from dotenv import load_dotenv
+
+from audit_agent.agent import AuditAgent
+
+
+def main() -&gt; None:
+    load_dotenv()
+    parser = argparse.ArgumentParser(description=&quot;审核辅助 Agent（工具调用 + 记忆 + 反思）&quot;)
+    parser.add_argument(
+        &quot;--mock&quot;,
+        action=&quot;store_true&quot;,
+        help=&quot;无需 OPENAI_API_KEY，本地演示工具链与反思结构&quot;,
+    )
+    parser.add_argument(
+        &quot;--model&quot;,
+        default=os.environ.get(&quot;OPENAI_MODEL&quot;, &quot;gpt-4o-mini&quot;),
+        help=&quot;OpenAI 兼容模型名&quot;,
+    )
+    args = parser.parse_args()
+
+    try:
+        agent = AuditAgent(mock=args.mock, model=args.model)
+    except ValueError as e:
+        print(e, file=sys.stderr)
+        print(&quot;提示: 使用 python main.py --mock 可离线演示。&quot;, file=sys.stderr)
+        sys.exit(1)
+
+    sid = agent.session_id
+    print(f&quot;会话 ID: {sid}（长期记忆按此 ID 存储）&quot;)
+    print(&quot;输入工单描述或问题，空行退出。示例：&quot;)
+    print(&#x27;  用户备注：kyc2提币审  提币金额：100  充值金额：80\n&#x27;)
+    try:
+        while True:
+            try:
+                line = input(&quot;你&gt; &quot;).strip()
+            except EOFError:
+                break
+            if not line:
+                break
+            reply = agent.run_turn(line)
+            print(f&quot;Agent&gt; {reply}\n&quot;)
+    finally:
+        agent.close()
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</code></pre></section>
+<section id="requirements-txt"><h2><code>requirements.txt</code></h2><pre class="code"><code>openai&gt;=1.40.0
+python-dotenv&gt;=1.0.0
+</code></pre></section>
+<section id="-env-example"><h2><code>.env.example</code></h2><pre class="code"><code># 复制为 .env 后填写。也可用环境变量直接导出。
+OPENAI_API_KEY=sk-...
+# 可选：兼容 OpenAI 协议的第三方网关
+# OPENAI_BASE_URL=https://api.openai.com/v1
+# 模型名按你的网关支持填写
+OPENAI_MODEL=gpt-4o-mini
+</code></pre></section>
+<section id="audit_agent-__init__-py"><h2><code>audit_agent/__init__.py</code></h2><pre class="code"><code>&quot;&quot;&quot;审核场景 Agent：工具调用 + 记忆 + 反思。&quot;&quot;&quot;
+
+__version__ = &quot;0.1.0&quot;
+</code></pre></section>
+<section id="audit_agent-agent-py"><h2><code>audit_agent/agent.py</code></h2><pre class="code"><code># -*- coding: utf-8 -*-
+&quot;&quot;&quot;审核 Agent：OpenAI 兼容 API + 工具循环 + 反思修订。&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+import os
+import uuid
+from typing import Any
+
+from openai import OpenAI
+
+from .memory import MemoryStore
+from .tools import TOOL_SPECS, dispatch_tool
+
+
+REFLECTION_SYSTEM = &quot;&quot;&quot;你是审核质检员。请只根据「用户原始诉求、工具返回的事实、助手初稿」做检查：
+1) 是否遗漏必须核对的规则要点
+2) 结论与工具/规则是否矛盾
+3) 若信息不足，是否明确列出待补充字段
+输出结构（使用中文）：
+【质检结果】通过/需修订
+【问题清单】...
+【修订稿】（若需修订则给出完整替代答复；若通过则重复初稿即可）&quot;&quot;&quot;
+
+
+class AuditAgent:
+    def __init__(
+        self,
+        *,
+        mock: bool = False,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        model: str | None = None,
+        db_path: str | None = None,
+        session_id: str | None = None,
+    ) -&gt; None:
+        self.mock = mock
+        self.model = model or os.environ.get(&quot;OPENAI_MODEL&quot;, &quot;gpt-4o-mini&quot;)
+        self.session_id = session_id or uuid.uuid4().hex[:12]
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        default_db = os.path.join(root, &quot;data&quot;, &quot;memory.db&quot;)
+        self.memory = MemoryStore(db_path or default_db)
+
+        self._client: OpenAI | None = None
+        if not mock:
+            key = api_key or os.environ.get(&quot;OPENAI_API_KEY&quot;)
+            if not key:
+                raise ValueError(&quot;未设置 OPENAI_API_KEY，可使用 --mock 运行演示模式&quot;)
+            kwargs: dict[str, Any] = {&quot;api_key&quot;: key}
+            if base_url or os.environ.get(&quot;OPENAI_BASE_URL&quot;):
+                kwargs[&quot;base_url&quot;] = base_url or os.environ.get(&quot;OPENAI_BASE_URL&quot;)
+            self._client = OpenAI(**kwargs)
+
+        self.short_term: list[dict[str, Any]] = []
+
+    def _system_prompt(self) -&gt; str:
+        mem = self.memory.format_context(self.session_id)
+        return f&quot;&quot;&quot;你是「提币/KYC 审核辅助」Agent。要求：
+- 优先调用工具获取规则与时间，再给出审核建议；不得编造内部规则细节。
+- 结论用：倾向通过 / 倾向拒绝 / 信息不足需补充，并简述依据。
+- 已知本会话长期记忆摘要：
+{mem}
+&quot;&quot;&quot;
+
+    def run_turn(self, user_message: str) -&gt; str:
+        &quot;&quot;&quot;处理用户一轮输入，返回最终答复（含反思）。&quot;&quot;&quot;
+        self.memory.append(self.session_id, &quot;user&quot;, user_message)
+        self.short_term.append({&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: user_message})
+
+        if self.mock:
+            return self._run_turn_mock(user_message)
+
+        assert self._client is not None
+        draft = self._chat_with_tools(self._client, self.model)
+        final = self._reflect(self._client, self.model, user_message, draft)
+        self.memory.append(self.session_id, &quot;assistant&quot;, final)
+        self.short_term.append({&quot;role&quot;: &quot;assistant&quot;, &quot;content&quot;: final})
+        return final
+
+    def _chat_with_tools(self, client: OpenAI, model: str) -&gt; str:
+        messages: list[dict[str, Any]] = [
+            {&quot;role&quot;: &quot;system&quot;, &quot;content&quot;: self._system_prompt()},
+            *self.short_term,
+        ]
+        for _ in range(8):
+            resp = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                tools=TOOL_SPECS,
+                tool_choice=&quot;auto&quot;,
+                temperature=0.2,
+            )
+            msg = resp.choices[0].message
+            tool_calls = msg.tool_calls
+            if not tool_calls:
+                text = (msg.content or &quot;&quot;).strip()
+                return text or &quot;（模型未返回文本）&quot;
+
+            messages.append(
+                {
+                    &quot;role&quot;: &quot;assistant&quot;,
+                    &quot;content&quot;: msg.content,
+                    &quot;tool_calls&quot;: [
+                        {
+                            &quot;id&quot;: tc.id,
+                            &quot;type&quot;: &quot;function&quot;,
+                            &quot;function&quot;: {
+                                &quot;name&quot;: tc.function.name,
+                                &quot;arguments&quot;: tc.function.arguments,
+                            },
+                        }
+                        for tc in tool_calls
+                    ],
+                }
+            )
+            for tc in tool_calls:
+                name = tc.function.name
+                out = dispatch_tool(name, tc.function.arguments)
+                self.memory.append(
+                    self.session_id,
+                    &quot;tool&quot;,
+                    f&quot;{name} -&gt; {out[:2000]}&quot;,
+                )
+                messages.append(
+                    {
+                        &quot;role&quot;: &quot;tool&quot;,
+                        &quot;tool_call_id&quot;: tc.id,
+                        &quot;content&quot;: out,
+                    }
+                )
+        return &quot;（工具调用轮数过多，请简化问题后重试）&quot;
+
+    def _reflect(self, client: OpenAI, model: str, user_message: str, draft: str) -&gt; str:
+        messages = [
+            {&quot;role&quot;: &quot;system&quot;, &quot;content&quot;: REFLECTION_SYSTEM},
+            {
+                &quot;role&quot;: &quot;user&quot;,
+                &quot;content&quot;: f&quot;【用户】{user_message}\n\n【助手初稿】\n{draft}&quot;,
+            },
+        ]
+        resp = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=0.1,
+        )
+        reflected = (resp.choices[0].message.content or &quot;&quot;).strip()
+        if &quot;【修订稿】&quot; in reflected:
+            parts = reflected.split(&quot;【修订稿】&quot;, 1)
+            revised = parts[-1].strip()
+            if revised:
+                return f&quot;{reflected}\n\n---\n（已附反思修订；上方为完整质检输出）&quot;
+        return f&quot;{draft}\n\n---\n【反思质检】\n{reflected}&quot;
+
+    def _run_turn_mock(self, user_message: str) -&gt; str:
+        &quot;&quot;&quot;无 API 时的演示路径：仍走工具与反思结构（规则简化）。&quot;&quot;&quot;
+        text = user_message.lower()
+        tool_lines: list[str] = []
+        if &quot;规则&quot; in user_message or &quot;kyc&quot; in text or &quot;提币&quot; in user_message:
+            kw = &quot;kyc2提币&quot;
+            for token in (&quot;kyc2&quot;, &quot;余额不足&quot;, &quot;仅提现审&quot;, &quot;提币拒绝&quot;, &quot;黑名单&quot;):
+                if token in user_message:
+                    kw = token
+            out = dispatch_tool(&quot;lookup_policy_rule&quot;, json.dumps({&quot;keyword&quot;: kw}))
+            tool_lines.append(f&quot;[lookup_policy_rule] {out}&quot;)
+        out_time = dispatch_tool(&quot;get_audit_utc_time&quot;, &quot;{}&quot;)
+        tool_lines.append(f&quot;[get_audit_utc_time] {out_time}&quot;)
+        if any(x in user_message for x in (&quot;备注&quot;, &quot;金额&quot;, &quot;充值&quot;, &quot;提币&quot;)):
+            snap = dispatch_tool(&quot;validate_case_snapshot&quot;, json.dumps({&quot;case_text&quot;: user_message}))
+            tool_lines.append(f&quot;[validate_case_snapshot] {snap}&quot;)
+
+        draft = (
+            &quot;【倾向结论】信息不足需补充\n&quot;
+            &quot;【依据摘要】&quot;
+            + (&quot;已参考工具返回的规则与时间。&quot; if tool_lines else &quot;未触发具体规则匹配；&quot;)
+            + &quot;\n【建议核对】用户备注、提币金额、充值金额、KYC 状态。&quot;
+        )
+        reflection = (
+            &quot;【质检结果】需修订\n&quot;
+            &quot;【问题清单】mock 模式未调用大模型，结论为占位；真实环境以模型输出为准。\n&quot;
+            &quot;【修订稿】\n&quot;
+            + draft
+        )
+        final = f&quot;{draft}\n\n---\n【工具轨迹】\n&quot; + &quot;\n&quot;.join(tool_lines) + f&quot;\n\n---\n【反思质检】\n{reflection}&quot;
+        self.memory.append(self.session_id, &quot;assistant&quot;, final)
+        self.short_term.append({&quot;role&quot;: &quot;assistant&quot;, &quot;content&quot;: final})
+        return final
+
+    def close(self) -&gt; None:
+        self.memory.close()
+</code></pre></section>
+<section id="audit_agent-tools-py"><h2><code>audit_agent/tools.py</code></h2><pre class="code"><code># -*- coding: utf-8 -*-
+&quot;&quot;&quot;可被 Agent 调用的工具（内置规则库模拟真实工单/知识库查询）。&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+from datetime import datetime, timezone
+from typing import Any
+
+# 与《审核流程梳理》常见分支对齐的简化规则片段，仅供辅助决策演示。
+POLICY_RULES: dict[str, str] = {
+    &quot;kyc2提币&quot;: (
+        &quot;若用户备注含「kyc2提币审」或「kyc2提现审」：需确认 KYC2 已完成；&quot;
+        &quot;若提币金额大于充值金额则倾向拒绝；若提币金额不大于充值金额则倾向通过。&quot;
+    ),
+    &quot;提币拒绝&quot;: &quot;若备注含「提币拒绝」：倾向直接拒绝（需核对系统记录与原因码）。&quot;,
+    &quot;余额不足&quot;: (
+        &quot;若备注严格为「余额不足」：将提币金额与「允许余额」比较；大于则拒绝，否则通过。&quot;
+    ),
+    &quot;仅提现审&quot;: (
+        &quot;若备注严格为「仅提现审」：将提币金额与充值金额比较；大于则拒绝，否则通过。&quot;
+    ),
+    &quot;零充值黑名单&quot;: (
+        &quot;零充值且无合约活动时，若综合因素为黑名单：需结合设备指纹/客服哈希/同IP用户数&quot;
+        &quot;与合约历史盈利等条件按流程表分支判断（详见内部完整流程文档）。&quot;
+    ),
+}
+
+
+def lookup_policy_rule(keyword: str) -&gt; str:
+    &quot;&quot;&quot;按关键词检索内部规则摘要（模拟知识库/规则引擎）。&quot;&quot;&quot;
+    k = (keyword or &quot;&quot;).strip()
+    if not k:
+        return &quot;请提供关键词，例如：kyc2提币、余额不足、仅提现审、提币拒绝、零充值黑名单。&quot;
+    hits = []
+    for name, body in POLICY_RULES.items():
+        if k.lower() in name.lower() or name.lower() in k.lower():
+            hits.append(f&quot;【{name}】{body}&quot;)
+    if not hits:
+        return (
+            f&quot;未找到与「{k}」直接匹配的规则条目。可用关键词示例：&quot;
+            + &quot;、&quot;.join(POLICY_RULES.keys())
+        )
+    return &quot;\n&quot;.join(hits)
+
+
+def get_audit_utc_time() -&gt; str:
+    &quot;&quot;&quot;返回当前 UTC 时间 ISO 字符串（用于工单时间戳一致性）。&quot;&quot;&quot;
+    return datetime.now(timezone.utc).isoformat()
+
+
+def normalize_case_json(case_text: str) -&gt; dict[str, Any]:
+    &quot;&quot;&quot;将用户粘贴的半结构化描述尝试解析为字段（演示用轻量解析）。&quot;&quot;&quot;
+    raw = (case_text or &quot;&quot;).strip()
+    if not raw:
+        return {&quot;error&quot;: &quot;case_text 为空&quot;}
+    # 简单键值提取：行内「键:值」或「键：值」
+    fields: dict[str, Any] = {}
+    for line in raw.replace(&quot;；&quot;, &quot;\n&quot;).splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        for sep in (&quot;:&quot;, &quot;：&quot;):
+            if sep in line:
+                key, _, rest = line.partition(sep)
+                key, rest = key.strip(), rest.strip()
+                if key and rest:
+                    fields[key] = rest
+                break
+    if not fields:
+        fields[&quot;raw&quot;] = raw
+    return fields
+
+
+def validate_case_snapshot(case_text: str) -&gt; str:
+    &quot;&quot;&quot;
+    校验工单字段是否齐全（演示规则）。
+    返回 JSON 字符串，供模型引用。
+    &quot;&quot;&quot;
+    data = normalize_case_json(case_text)
+    required = [&quot;用户备注&quot;, &quot;提币金额&quot;, &quot;充值金额&quot;]
+    missing = [r for r in required if r not in data]
+    payload = {
+        &quot;parsed_fields&quot;: data,
+        &quot;missing_required&quot;: missing,
+        &quot;ready_for_branch&quot;: len(missing) == 0,
+    }
+    return json.dumps(payload, ensure_ascii=False)
+
+
+TOOL_SPECS = [
+    {
+        &quot;type&quot;: &quot;function&quot;,
+        &quot;function&quot;: {
+            &quot;name&quot;: &quot;lookup_policy_rule&quot;,
+            &quot;description&quot;: &quot;根据关键词检索提币/KYC 相关审核规则摘要（内部知识库）。&quot;,
+            &quot;parameters&quot;: {
+                &quot;type&quot;: &quot;object&quot;,
+                &quot;properties&quot;: {
+                    &quot;keyword&quot;: {
+                        &quot;type&quot;: &quot;string&quot;,
+                        &quot;description&quot;: &quot;规则关键词或用户备注中的关键片段&quot;,
+                    }
+                },
+                &quot;required&quot;: [&quot;keyword&quot;],
+            },
+        },
+    },
+    {
+        &quot;type&quot;: &quot;function&quot;,
+        &quot;function&quot;: {
+            &quot;name&quot;: &quot;get_audit_utc_time&quot;,
+            &quot;description&quot;: &quot;获取当前 UTC 时间 ISO 字符串，用于工单记录时间戳。&quot;,
+            &quot;parameters&quot;: {&quot;type&quot;: &quot;object&quot;, &quot;properties&quot;: {}, &quot;required&quot;: []},
+        },
+    },
+    {
+        &quot;type&quot;: &quot;function&quot;,
+        &quot;function&quot;: {
+            &quot;name&quot;: &quot;validate_case_snapshot&quot;,
+            &quot;description&quot;: &quot;解析并校验用户提供的工单字段是否齐全（备注、提币金额、充值金额等）。&quot;,
+            &quot;parameters&quot;: {
+                &quot;type&quot;: &quot;object&quot;,
+                &quot;properties&quot;: {
+                    &quot;case_text&quot;: {
+                        &quot;type&quot;: &quot;string&quot;,
+                        &quot;description&quot;: &quot;用户粘贴的工单文本，可含多行「键:值」&quot;,
+                    }
+                },
+                &quot;required&quot;: [&quot;case_text&quot;],
+            },
+        },
+    },
+]
+
+
+def dispatch_tool(name: str, arguments: str | dict[str, Any]) -&gt; str:
+    &quot;&quot;&quot;执行工具并返回字符串结果。&quot;&quot;&quot;
+    args: dict[str, Any]
+    if isinstance(arguments, str):
+        args = json.loads(arguments) if arguments.strip() else {}
+    else:
+        args = arguments
+
+    if name == &quot;lookup_policy_rule&quot;:
+        return lookup_policy_rule(str(args.get(&quot;keyword&quot;, &quot;&quot;)))
+    if name == &quot;get_audit_utc_time&quot;:
+        return get_audit_utc_time()
+    if name == &quot;validate_case_snapshot&quot;:
+        return validate_case_snapshot(str(args.get(&quot;case_text&quot;, &quot;&quot;)))
+    return f&quot;未知工具: {name}&quot;
+</code></pre></section>
+<section id="audit_agent-memory-py"><h2><code>audit_agent/memory.py</code></h2><pre class="code"><code># -*- coding: utf-8 -*-
+&quot;&quot;&quot;短期会话记忆 + SQLite 长期记忆。&quot;&quot;&quot;
+
+from __future__ import annotations
+
+import json
+import sqlite3
+import time
+from pathlib import Path
+from typing import Any
+
+
+class MemoryStore:
+    &quot;&quot;&quot;长期记忆：按 session_id 存关键事实与摘要，便于多轮延续。&quot;&quot;&quot;
+
+    def __init__(self, db_path: str | Path) -&gt; None:
+        self._path = Path(db_path)
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        self._conn = sqlite3.connect(str(self._path))
+        self._conn.row_factory = sqlite3.Row
+        self._init()
+
+    def _init(self) -&gt; None:
+        self._conn.execute(
+            &quot;&quot;&quot;
+            CREATE TABLE IF NOT EXISTS memories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL,
+                kind TEXT NOT NULL,
+                content TEXT NOT NULL,
+                created_at REAL NOT NULL
+            )
+            &quot;&quot;&quot;
+        )
+        self._conn.commit()
+
+    def append(self, session_id: str, kind: str, content: str) -&gt; None:
+        self._conn.execute(
+            &quot;INSERT INTO memories (session_id, kind, content, created_at) VALUES (?, ?, ?, ?)&quot;,
+            (session_id, kind, content, time.time()),
+        )
+        self._conn.commit()
+
+    def recent(self, session_id: str, limit: int = 20) -&gt; list[dict[str, Any]]:
+        cur = self._conn.execute(
+            &quot;&quot;&quot;
+            SELECT kind, content, created_at FROM memories
+            WHERE session_id = ?
+            ORDER BY id DESC
+            LIMIT ?
+            &quot;&quot;&quot;,
+            (session_id, limit),
+        )
+        rows = [dict(r) for r in cur.fetchall()]
+        rows.reverse()
+        return rows
+
+    def format_context(self, session_id: str, limit: int = 12) -&gt; str:
+        parts = []
+        for row in self.recent(session_id, limit=limit):
+            parts.append(f&quot;[{row[&#x27;kind&#x27;]}] {row[&#x27;content&#x27;]}&quot;)
+        if not parts:
+            return &quot;（尚无长期记忆记录）&quot;
+        return &quot;\n&quot;.join(parts)
+
+    def close(self) -&gt; None:
+        self._conn.close()
+
+
+def dumps_json(obj: Any) -&gt; str:
+    return json.dumps(obj, ensure_ascii=False)
+</code></pre></section>
+
+    <footer>由仓库内文件生成 · audit_agent · 以 UTF-8 阅读</footer>
+  </div>
+</body>
+</html>
