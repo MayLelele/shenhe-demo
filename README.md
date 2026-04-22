@@ -58,6 +58,8 @@ python audit_web.py
 
 **审核知识库**（规则说明、字段标准、如何新增条目、与 `tools.POLICY_RULES` 同步方式）：见 [`knowledge_base/README.md`](./knowledge_base/README.md)。
 
+**远程仓库（GitHub）**：[MayLelele/shenhe-demo](https://github.com/MayLelele/shenhe-demo)（描述为「审核 demo」；因 GitHub 对仓库名字符限制，slug 使用 `shenhe-demo` 而非全中文名）。
+
 ## 说明
 
 内置规则片段为演示用途，与完整内控制度一致前请以正式文档与系统为准。
