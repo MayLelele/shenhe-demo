@@ -130,6 +130,25 @@
     .step-title { font-size: 0.8rem; color: var(--muted); margin: 0 0 0.2rem; }
     .json-tag { color: #7ee787; font-size: 0.75rem; }
     a { color: var(--info); }
+    textarea {
+      width: 100%;
+      min-height: 4.5rem;
+      padding: 0.55rem 0.65rem;
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 0.9rem;
+      font-family: inherit;
+      resize: vertical;
+    }
+    .qc-flow { border-top: 1px solid var(--border); margin-top: 1rem; padding-top: 1rem; }
+    .qc-row { margin: 0.6rem 0; }
+    .qc-row label.row-h { font-size: 0.85rem; color: var(--text); margin-bottom: 0.35rem; }
+    .qc-radios { display: flex; gap: 1.25rem; flex-wrap: wrap; align-items: center; }
+    .qc-radios label { display: flex; align-items: center; gap: 0.35rem; cursor: pointer; }
+    .qc-hint { font-size: 0.78rem; color: var(--muted); margin: 0.4rem 0 0; }
+    .qc-ok { color: #7ee787; font-size: 0.88rem; margin-top: 0.5rem; }
   </style>
 </head>
 <body>
@@ -187,6 +206,33 @@
       <div class="timeline" id="chain"></div>
     </div>
 
+    <div id="qc" class="card" style="display:none">
+      <h2>人工质检</h2>
+      <p class="meta-line" style="margin-top:0">流程：核对系统判定与证据链 → 选择是否准确 → 若不准确，填写评价与<strong>应写入知识库的审核建议</strong>（便于后续优化规则）。</p>
+      <div class="qc-flow">
+        <div class="qc-row">
+          <span class="row-h">本次系统自动审核是否准确？</span>
+          <div class="qc-radios">
+            <label><input type="radio" name="qc_result" value="pass" /> 准确</label>
+            <label><input type="radio" name="qc_result" value="fail" /> 不准确</label>
+          </div>
+        </div>
+        <div id="qcPassBox" class="qc-row" style="display:none">
+          <label class="row-h" for="qcNotePass">备注（可选，将一并记入反馈日志）</label>
+          <textarea id="qcNotePass" placeholder="可补充通过理由或无异议说明"></textarea>
+        </div>
+        <div id="qcFailBox" class="qc-row" style="display:none">
+          <label class="row-h" for="qcEval">评价（问题说明） *</label>
+          <textarea id="qcEval" placeholder="说明系统错在哪里、遗漏了哪些事实或规则"></textarea>
+          <p class="qc-hint">请具体说明，便于研发/业务复盘。</p>
+          <label class="row-h" for="qcSug" style="margin-top:0.6rem">审核建议（写入知识库） *</label>
+          <textarea id="qcSug" placeholder="建议补充或修正的规则表述、关键词、分支条件等，后续可合并进 knowledge_base/01- 与 tools.POLICY_RULES"></textarea>
+        </div>
+        <button type="button" class="btn" id="qcBtn" disabled>提交质检结果</button>
+        <p id="qcMsg" class="qc-ok" style="display:none"></p>
+      </div>
+    </div>
+
     <p id="err" class="err" style="display:none"></p>
   </div>
   <script>
@@ -208,6 +254,72 @@
         .split(">").join("&gt;")
         .split('"').join("&quot;");
     }
+
+    var lastAudit = null;
+
+    function syncQcRadios() {
+      var q = document.querySelector("input[name=qc_result]:checked");
+      var fail = q && q.value === "fail";
+      var pass = q && q.value === "pass";
+      document.getElementById("qcFailBox").style.display = fail ? "block" : "none";
+      document.getElementById("qcPassBox").style.display = pass ? "block" : "none";
+      document.getElementById("qcBtn").disabled = !q;
+    }
+    document.querySelectorAll("input[name=qc_result]").forEach(function (el) {
+      el.addEventListener("change", syncQcRadios);
+    });
+
+    document.getElementById("qcBtn").addEventListener("click", async function () {
+      var q = document.querySelector("input[name=qc_result]:checked");
+      if (!lastAudit || !q) return;
+      var msg = document.getElementById("qcMsg");
+      msg.style.display = "none";
+      var evalText, sug;
+      if (q.value === "fail") {
+        evalText = document.getElementById("qcEval").value.trim();
+        sug = document.getElementById("qcSug").value.trim();
+        if (!evalText || !sug) {
+          alert("请填写「评价」与「审核建议（入知识库）」。");
+          return;
+        }
+      } else {
+        evalText = document.getElementById("qcNotePass").value.trim();
+        sug = "";
+      }
+      var btn = document.getElementById("qcBtn");
+      btn.disabled = true;
+      try {
+        var r = await fetch("/api/quality", {
+          method: "POST",
+          headers: { "Content-Type": "application/json; charset=utf-8" },
+          body: JSON.stringify({
+            session_id: lastAudit.session_id,
+            user_id: lastAudit.user_id,
+            remark: lastAudit.remark,
+            withdraw: lastAudit.withdraw,
+            deposit: lastAudit.deposit,
+            mock: lastAudit.mock,
+            model: lastAudit.model || "",
+            system_verdict: lastAudit.verdict,
+            assistant_reply: lastAudit.reply,
+            qc_result: q.value,
+            evaluation: evalText,
+            suggestion: sug
+          })
+        });
+        var data = await r.json();
+        if (!data.ok) {
+          alert(data.error || "保存失败");
+          return;
+        }
+        msg.textContent = data.message + (data.saved && data.saved.jsonl ? "（" + data.saved.jsonl + "）" : "");
+        msg.style.display = "block";
+      } catch (ex) {
+        alert("提交失败: " + ex);
+      } finally {
+        btn.disabled = false;
+      }
+    });
 
     function renderEvidence2(data) {
       const evidence = data.evidence;
@@ -277,6 +389,27 @@
         $("#verdictText").textContent = data.reply;
         ev.style.display = "block";
         renderEvidence2(data);
+        lastAudit = {
+          session_id: data.session_id,
+          verdict: data.verdict,
+          reply: data.reply,
+          mock: data.mock,
+          model: data.model,
+          user_id: body.user_id,
+          remark: body.remark,
+          withdraw: body.withdraw,
+          deposit: body.deposit
+        };
+        document.getElementById("qc").style.display = "block";
+        document.querySelectorAll("input[name=qc_result]").forEach(function (x) { x.checked = false; });
+        document.getElementById("qcEval").value = "";
+        document.getElementById("qcSug").value = "";
+        document.getElementById("qcNotePass").value = "";
+        document.getElementById("qcMsg").style.display = "none";
+        document.getElementById("qcFailBox").style.display = "none";
+        document.getElementById("qcPassBox").style.display = "none";
+        document.getElementById("qcBtn").disabled = true;
+        syncQcRadios();
       } catch (ex) {
         err.textContent = "请求失败。是否已执行 python audit_web.py 并访问 http://127.0.0.1:8765/ ？  " + ex;
         err.style.display = "block";

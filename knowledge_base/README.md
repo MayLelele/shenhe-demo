@@ -9,6 +9,7 @@
 | [02-工单字段与校验标准.md](./02-工单字段与校验标准.md) | 解析字段、必填项、可扩展项（如 用户ID） |
 | [03-系统能力映射.md](./03-系统能力映射.md) | Agent/工具/审核台/证据链与知识的关系 |
 | [entries/_TEMPLATE_规则条目.md](./entries/_TEMPLATE_规则条目.md) | 新增单条规则时的复制模板 |
+| [entries/feedback/](./entries/feedback/) | 审核台**人工质检**导出的 JSONL 与「不准确」时的 Markdown 摘要（可 git 或按需忽略） |
 
 **维护约定（简要）**
 

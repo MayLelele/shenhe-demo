@@ -54,6 +54,8 @@ python audit_web.py
 # 浏览器打开 http://127.0.0.1:8765/ （端口占用时可设环境变量 AUDIT_WEB_PORT）
 ```
 
+审核结束后可在同页进行**人工质检**：若系统审核**不准确**，须填写评价与**写入知识库的建议**，将保存到 `knowledge_base/entries/feedback/`（详见该目录 `README.md`）。
+
 **复盘与变更纪要**（时间线、排障、已知限制）：见 [`执行纪要-复盘.md`](./执行纪要-复盘.md)。
 
 **审核知识库**（规则说明、字段标准、如何新增条目、与 `tools.POLICY_RULES` 同步方式）：见 [`knowledge_base/README.md`](./knowledge_base/README.md)。
